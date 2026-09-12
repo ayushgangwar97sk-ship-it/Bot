@@ -21,7 +21,7 @@ VIP_CHANNEL_LINK  = "https://t.me/+SogkxdNWQyZkYzRl"
 REGISTRATION_LINK = "https://www.shreewin34.com/#/register?invitationCode=64778100774"
 LOSS_RECOVER_LINK = "t.me/lossrecoversure"
 
-WEBHOOK_URL = os.environ.get("bot-blush-zeta.vercel.app/api")
+WEBHOOK_URL = os.environ.get("https://bot-blush-zeta.vercel.app/api")
 
 EMOJI_VIDEO = "6147617184479711380"
 EMOJI_APK   = "5767209624675553166"
@@ -60,7 +60,7 @@ START_MESSAGE = (
     "𝗦𝗘𝗧𝗨𝗣 𝗩𝗜𝗗𝗘𝗢 & 𝗛𝗔𝗖𝗞 𝗔𝗣𝗞 𝗡𝗘𝗘𝗖𝗛𝗘 𝗗𝗜𝗬𝗔 𝗚𝗔𝗬𝗔 𝗛𝗔𝗜"
 )
 
-# ------------------ IN-MEMORY USERS ------------------
+# ------------------ USERS (in-memory) ------------------
 _users_cache = set()
 
 def add_user(user_id: int):
@@ -74,10 +74,16 @@ def users_count():
 
 # ------------------ HELPERS ------------------
 async def send_all_content_to_user(bot, user_id: int):
-    await bot.copy_message(chat_id=user_id, from_chat_id=SOURCE_CHANNEL,
-        message_id=VIDEO_MESSAGE_ID, reply_markup=VIDEO_KEYBOARD)
-    await bot.copy_message(chat_id=user_id, from_chat_id=SOURCE_CHANNEL,
-        message_id=APK_MESSAGE_ID, reply_markup=APK_KEYBOARD)
+    try:
+        await bot.copy_message(chat_id=user_id, from_chat_id=SOURCE_CHANNEL,
+            message_id=VIDEO_MESSAGE_ID, reply_markup=VIDEO_KEYBOARD)
+    except Exception as e:
+        logger.error(f"Video send error {user_id}: {e}")
+    try:
+        await bot.copy_message(chat_id=user_id, from_chat_id=SOURCE_CHANNEL,
+            message_id=APK_MESSAGE_ID, reply_markup=APK_KEYBOARD)
+    except Exception as e:
+        logger.error(f"APK send error {user_id}: {e}")
     try:
         await bot.copy_message(chat_id=user_id, from_chat_id=SOURCE_CHANNEL,
             message_id=VOICE_MESSAGE_ID)
@@ -92,10 +98,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     add_user(user.id)
     await update.message.reply_text(text=START_MESSAGE)
-    try:
-        await send_all_content_to_user(context.bot, user.id)
-    except Exception as e:
-        logger.error(f"Error in start for {user.id}: {e}")
+    await send_all_content_to_user(context.bot, user.id)
 
 async def admin_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != ADMIN_ID:
@@ -147,20 +150,10 @@ async def handle_admin_message(update: Update, context: ContextTypes.DEFAULT_TYP
     action = context.user_data.get('action')
     if not action:
         return
-    msg = update.message
-    text = msg.text.strip() if msg.text else ""
+    text = update.message.text.strip() if update.message.text else ""
 
-    if action == 'send_apk' and text.upper() == 'CONFIRM':
-        await _do_broadcast(update, context, "apk")
-        context.user_data.pop('action', None)
-    elif action == 'send_video' and text.upper() == 'CONFIRM':
-        await _do_broadcast(update, context, "video")
-        context.user_data.pop('action', None)
-    elif action == 'send_voice' and text.upper() == 'CONFIRM':
-        await _do_broadcast(update, context, "voice")
-        context.user_data.pop('action', None)
-    elif action == 'send_all' and text.upper() == 'CONFIRM':
-        await _do_broadcast(update, context, "all")
+    if action in ('send_apk', 'send_video', 'send_voice', 'send_all') and text.upper() == 'CONFIRM':
+        await _do_broadcast(update, context, action.replace('send_', ''))
         context.user_data.pop('action', None)
     elif action == 'send_text':
         await _do_broadcast(update, context, "text", text)
@@ -169,12 +162,9 @@ async def handle_admin_message(update: Update, context: ContextTypes.DEFAULT_TYP
 async def _do_broadcast(update, context, kind, text=""):
     user_ids = get_all_users()
     if not user_ids:
-        await update.message.reply_text("❌ No users found (in-memory khaali hai).")
+        await update.message.reply_text("❌ No users found.")
         return
-    total = len(user_ids)
-
-    sm = await update.message.reply_text(f"⏳ Sending {kind} to {total} users...")
-
+    sm = await update.message.reply_text(f"⏳ Sending {kind} to {len(user_ids)} users...")
     success = failed = 0
     for uid in user_ids:
         try:
@@ -198,12 +188,10 @@ async def _do_broadcast(update, context, kind, text=""):
         except Exception as e:
             failed += 1
             logger.error(f"Broadcast fail {uid}: {e}")
-
     await sm.edit_text(f"✅ {kind.upper()} Done\n✅ Success: {success}\n❌ Failed: {failed}")
 
 async def handle_join_request(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    req = update.chat_join_request
-    user = req.from_user
+    user = update.chat_join_request.from_user
     add_user(user.id)
     try:
         await context.bot.send_message(chat_id=user.id, text=START_MESSAGE)
@@ -222,6 +210,8 @@ _application = None
 def get_application():
     global _application
     if _application is None:
+        if not BOT_TOKEN:
+            raise ValueError("BOT_TOKEN environment variable missing!")
         _application = Application.builder().token(BOT_TOKEN).build()
         _application.add_handler(CommandHandler("start", start))
         _application.add_handler(CommandHandler("admin", admin_menu))
@@ -234,43 +224,54 @@ def get_application():
 # ------------------ FLASK ------------------
 app = Flask(__name__)
 
-@app.route("/", methods=["GET", "POST"])
-def main_route():
-    if request.method == "GET":
-        # Setup: /api?setup=1
-        if request.args.get("setup") == "1":
-            try:
-                application = get_application()
-                async def _setup():
-                    await application.bot.delete_webhook(drop_pending_updates=True)
-                    await application.bot.set_webhook(
-                        url=WEBHOOK_URL,
-                        allowed_updates=["message", "callback_query", "chat_join_request"]
-                    )
-                asyncio.run(_setup())
-                return "✅ Webhook set successfully!"
-            except Exception as e:
-                logger.error(f"Setup error: {e}")
-                return f"❌ Setup error: {e}", 500
-        return "✅ Bot is alive"
+def run_async(coro):
+    """Har call par naya event loop — Vercel ke liye safe."""
+    loop = asyncio.new_event_loop()
+    try:
+        asyncio.set_event_loop(loop)
+        return loop.run_until_complete(coro)
+    finally:
+        try:
+            loop.close()
+        except Exception:
+            pass
 
-    # POST = Telegram webhook
+@app.route("/", methods=["GET"])
+def health():
+    if request.args.get("setup") == "1":
+        try:
+            if not WEBHOOK_URL:
+                return "❌ WEBHOOK_URL environment variable missing!", 500
+            application = get_application()
+            async def _setup():
+                await application.bot.delete_webhook(drop_pending_updates=True)
+                await application.bot.set_webhook(
+                    url=WEBHOOK_URL,
+                    allowed_updates=["message", "callback_query", "chat_join_request"]
+                )
+            run_async(_setup())
+            return f"✅ Webhook set to {WEBHOOK_URL}"
+        except Exception as e:
+            logger.error(f"Setup error: {e}")
+            return f"❌ Setup error: {e}", 500
+    return "✅ Bot is alive"
+
+@app.route("/", methods=["POST"])
+def webhook():
     try:
         data = request.get_json(force=True)
         application = get_application()
         update = Update.de_json(data, application.bot)
-
         async def _process():
-            await application.initialize()
+            if not application._initialized:
+                await application.initialize()
             await application.process_update(update)
-
-        asyncio.run(_process())
+        run_async(_process())
         return "OK", 200
     except Exception as e:
         logger.error(f"Webhook error: {e}")
         return "OK", 200
 
 # ------------------ VERCEL ENTRYPOINTS ------------------
-# Vercel in teeno mein se koi bhi dhundhta hai. Teeno de do.
 handler = app
 application = app
