@@ -1,4 +1,3 @@
-import os
 import logging
 import asyncio
 from flask import Flask, request
@@ -9,8 +8,8 @@ from telegram.ext import (
     ContextTypes, CallbackQueryHandler, MessageHandler, filters
 )
 
-# ------------------ CONFIG (Hardcoded) ------------------
-BOT_TOKEN        = "8910821109:AAHDM02E2SYogk-I7Sumj9I9V9_6tHHmQ7w"          # ← Apna token yahan daalo
+# ------------------ CONFIG ------------------
+BOT_TOKEN        = "YOUR_BOT_TOKEN_HERE"          # ← Apna token yahan daalo
 ADMIN_ID         = 8080371272
 SOURCE_CHANNEL   = "@bablu922"
 APK_MESSAGE_ID   = 3
@@ -19,9 +18,9 @@ VOICE_MESSAGE_ID = 4
 
 VIP_CHANNEL_LINK  = "https://t.me/+SogkxdNWQyZkYzRl"
 REGISTRATION_LINK = "https://www.shreewin34.com/#/register?invitationCode=64778100774"
-LOSS_RECOVER_LINK = "https://t.me/lossrecoversure"   # ← https:// add kiya
+LOSS_RECOVER_LINK = "https://t.me/lossrecoversure"
 
-WEBHOOK_URL = "https://bot-blush-zeta.vercel.app/api"   # ← Apna Vercel URL daalo
+WEBHOOK_URL = "https://bot-blush-zeta.vercel.app/"   # ← Apna Vercel URL daalo
 
 EMOJI_VIDEO = "6147617184479711380"
 EMOJI_APK   = "5767209624675553166"
@@ -221,11 +220,10 @@ def get_application():
         _application.add_handler(ChatJoinRequestHandler(handle_join_request))
     return _application
 
-# ------------------ FLASK ------------------
+# ------------------ FLASK (YEHI IMPORTANT HAI) ------------------
 app = Flask(__name__)
 
 def run_async(coro):
-    """Har call par naya event loop — Vercel ke liye safe."""
     loop = asyncio.new_event_loop()
     try:
         asyncio.set_event_loop(loop)
@@ -269,7 +267,3 @@ def webhook():
     except Exception as e:
         logger.error(f"Webhook error: {e}")
         return "OK", 200
-
-# ------------------ VERCEL ENTRYPOINTS ------------------
-handler = app
-application = app
