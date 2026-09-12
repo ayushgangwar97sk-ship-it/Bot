@@ -1,2 +1,1 @@
-python-telegram-bot==22.7
-upstash-redis==1.1.0
+python-telegram-bot==21.6
