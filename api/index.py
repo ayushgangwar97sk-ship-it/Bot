@@ -9,19 +9,19 @@ from telegram.ext import (
     ContextTypes, CallbackQueryHandler, MessageHandler, filters
 )
 
-# ------------------ CONFIG ------------------
-BOT_TOKEN        = os.environ.get("BOT_TOKEN")
-ADMIN_ID         = int(os.environ.get("ADMIN_ID", "8080371272"))
-SOURCE_CHANNEL   = os.environ.get("SOURCE_CHANNEL", "@bablu922")
-APK_MESSAGE_ID   = int(os.environ.get("APK_MESSAGE_ID", "3"))
-VIDEO_MESSAGE_ID = int(os.environ.get("VIDEO_MESSAGE_ID", "2"))
-VOICE_MESSAGE_ID = int(os.environ.get("VOICE_MESSAGE_ID", "4"))
+# ------------------ CONFIG (Hardcoded) ------------------
+BOT_TOKEN        = "8910821109:AAHDM02E2SYogk-I7Sumj9I9V9_6tHHmQ7w"          # ← Apna token yahan daalo
+ADMIN_ID         = 8080371272
+SOURCE_CHANNEL   = "@bablu922"
+APK_MESSAGE_ID   = 3
+VIDEO_MESSAGE_ID = 2
+VOICE_MESSAGE_ID = 4
 
 VIP_CHANNEL_LINK  = "https://t.me/+SogkxdNWQyZkYzRl"
 REGISTRATION_LINK = "https://www.shreewin34.com/#/register?invitationCode=64778100774"
-LOSS_RECOVER_LINK = "t.me/lossrecoversure"
+LOSS_RECOVER_LINK = "https://t.me/lossrecoversure"   # ← https:// add kiya
 
-WEBHOOK_URL = os.environ.get("https://bot-blush-zeta.vercel.app/api")
+WEBHOOK_URL = "https://bot-blush-zeta.vercel.app/api"   # ← Apna Vercel URL daalo
 
 EMOJI_VIDEO = "6147617184479711380"
 EMOJI_APK   = "5767209624675553166"
@@ -210,14 +210,14 @@ _application = None
 def get_application():
     global _application
     if _application is None:
-        if not BOT_TOKEN:
-            raise ValueError("BOT_TOKEN environment variable missing!")
+        if not BOT_TOKEN or BOT_TOKEN == "YOUR_BOT_TOKEN_HERE":
+            raise ValueError("BOT_TOKEN set nahi kiya!")
         _application = Application.builder().token(BOT_TOKEN).build()
         _application.add_handler(CommandHandler("start", start))
         _application.add_handler(CommandHandler("admin", admin_menu))
         _application.add_handler(CommandHandler("users", users_command))
         _application.add_handler(CallbackQueryHandler(handle_admin_callback, pattern="^admin_"))
-        _application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_admin_message))
+        _application.add_handler(MessageHandler(filters.TEXT & \~filters.COMMAND, handle_admin_message))
         _application.add_handler(ChatJoinRequestHandler(handle_join_request))
     return _application
 
@@ -240,8 +240,6 @@ def run_async(coro):
 def health():
     if request.args.get("setup") == "1":
         try:
-            if not WEBHOOK_URL:
-                return "❌ WEBHOOK_URL environment variable missing!", 500
             application = get_application()
             async def _setup():
                 await application.bot.delete_webhook(drop_pending_updates=True)
