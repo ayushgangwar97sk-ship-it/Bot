@@ -21,7 +21,7 @@ VIP_CHANNEL_LINK  = "https://t.me/+SogkxdNWQyZkYzRl"
 REGISTRATION_LINK = "https://www.shreewin34.com/#/register?invitationCode=64778100774"
 LOSS_RECOVER_LINK = "t.me/lossrecoversure"
 
-WEBHOOK_URL = os.environ.get("https://bot19.vercel.app/api")
+WEBHOOK_URL = os.environ.get("bot-blush-zeta.vercel.app/api")
 
 EMOJI_VIDEO = "6147617184479711380"
 EMOJI_APK   = "5767209624675553166"
